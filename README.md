@@ -1,4 +1,5 @@
-# --========================================================
+
+--========================================================
 -- BLACKHAT HUB | SMART AUTO - OPTIMIZED & FIXED AVATAR
 -- Author: blackhat
 --========================================================
@@ -11,21 +12,23 @@ local CoreGui = game:GetService("CoreGui")
 
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
-local Events = ReplicatedStorage:WaitForChild("Events")
 
---========================================================
--- REMOTES
---========================================================
+-- Güvenli Events ve Remotes Kontrolü
+local Events = ReplicatedStorage:WaitForChild("Events", 10)
+if not Events then
+    warn("[Blackhat Hub] Events klasörü bulunamadı!")
+    return
+end
 
-local ModeVote = Events:WaitForChild("ModeVote")
-local ReadyEvent = Events:WaitForChild("Ready")
-local PurchaseItem = ReplicatedStorage:WaitForChild("PurchaseItem")
+local ModeVote = Events:WaitForChild("ModeVote", 5)
+local ReadyEvent = Events:WaitForChild("Ready", 5)
+local PurchaseItem = ReplicatedStorage:WaitForChild("PurchaseItem", 5)
 
 local SpawnPartner = Events:FindFirstChild("SpawnPartner")
 local UpgradeEvent = Events:FindFirstChild("UpgradeEvent")
 
-local CharacterRemotes = ReplicatedStorage:WaitForChild("CharacterRemotes", 10)
-local ProtoClickEvent = CharacterRemotes and CharacterRemotes:WaitForChild("ProtoBV1", 10) and CharacterRemotes.ProtoBV1:WaitForChild("Click", 10)
+local CharacterRemotes = ReplicatedStorage:FindFirstChild("CharacterRemotes")
+local ProtoClickEvent = CharacterRemotes and CharacterRemotes:FindFirstChild("ProtoBV1") and CharacterRemotes.ProtoBV1:FindFirstChild("Click")
 
 --========================================================
 -- ASSETS & CONFIG
@@ -143,8 +146,8 @@ local State = {
 }
 
 local UpdateStartLoopUI = nil
-local CloseModePicker
-local CloseTransformPicker
+local CloseModePicker = function() end
+local CloseTransformPicker = function() end
 
 --========================================================
 -- CHARACTER HELPERS
@@ -234,7 +237,7 @@ end
 local function VoteMode(force)
     local now = os.clock()
     if not force and now - State.LastVote < VoteCooldown then return false end
-    pcall(function() ModeVote:FireServer(SelectedMode) end)
+    if ModeVote then pcall(function() ModeVote:FireServer(SelectedMode) end) end
     State.LastVote = now
     return true
 end
@@ -244,7 +247,7 @@ local function SendReady(force)
     local now = os.clock()
     if not force and now - State.LastReady < ReadyCooldown then return false end
 
-    local ok = pcall(function() ReadyEvent:FireServer() end)
+    local ok = pcall(function() if ReadyEvent then ReadyEvent:FireServer() end end)
     if ok then
         State.LastReady = now
         State.ReadyDoneThisCycle = true
@@ -284,6 +287,7 @@ local function BuyProtocol(force)
     if not force and now - State.LastBuy < 2 then return false, false end
     State.LastBuy = now
 
+    if not PurchaseItem then return true, false end
     local ok, result = pcall(function()
         return PurchaseItem:InvokeServer("Player", PLAYABLE_PROTOCOL_NAME)
     end)
@@ -304,47 +308,6 @@ local function GetPlayableProtocolTool()
         if tool and tool:IsA("Tool") then return tool end
     end
     return nil
-end
-
-local function ActivatePlayableProtocol(force)
-    local now = os.clock()
-    if State.BuyTransformDoneThisCycle or State.TransformCompletedThisCycle then return true end
-    if not force and now - State.LastTransform < 3 then return false end
-
-    State.LastTransform = now
-    State.TransformInProgress = true
-    State.TransformCharacterSwap = true
-
-    local tool = GetPlayableProtocolTool()
-    local originalCharacter = LocalPlayer.Character
-    if not tool then
-        State.TransformInProgress = false
-        return false
-    end
-
-    local humanoid = originalCharacter and originalCharacter:FindFirstChildOfClass("Humanoid")
-    if humanoid and tool.Parent ~= originalCharacter then
-        pcall(function() humanoid:EquipTool(tool) end)
-    end
-
-    task.wait(0.2)
-    local startedAt = os.clock()
-
-    while os.clock() - startedAt < 15 do
-        if LocalPlayer.Character ~= originalCharacter or not tool or not tool.Parent then break end
-        pcall(function() tool:Activate() end)
-        task.wait(0.8)
-    end
-
-    State.BuyTransformDoneThisCycle = true
-    State.TransformCompletedThisCycle = true
-    State.TransformInProgress = false
-
-    if AutoStartLoop then
-        AutoStartLoop = false
-        if UpdateStartLoopUI then UpdateStartLoopUI(false) end
-    end
-    return true
 end
 
 --========================================================
@@ -395,7 +358,7 @@ local function TPFreeze()
 end
 
 --========================================================
--- OPTIMIZED LOOPS (NOCLIP / VOID HOVER / ANTI-VOID)
+-- LOOPS (NOCLIP / VOID HOVER / ANTI-VOID)
 --========================================================
 
 RunService.Stepped:Connect(function()
@@ -453,7 +416,7 @@ task.spawn(function()
 end)
 
 --========================================================
--- OPTIMIZED AUTO FARM
+-- AUTO FARM
 --========================================================
 
 local function getClosestTarget()
@@ -583,13 +546,12 @@ LocalPlayer.CharacterAdded:Connect(function(character)
         if not wasTransformSwap then
             NewCycle("respawn")
             task.wait(1.2)
-            if AutoReady then StartAutoReadyNow() end
         end
     end)
 end)
 
 --========================================================
--- AUTO UP TECH & ANTI AFK
+-- AUTO UP TECH & ANTI AFK & AUTO SPAWN
 --========================================================
 
 local StatTypes = {"STRENGTH", "TECH", "MORALE"}
@@ -620,10 +582,6 @@ task.spawn(function()
         end
     end
 end)
-
---========================================================
--- AUTO SPAWN
---========================================================
 
 task.spawn(function()
     while task.wait(SpawnDelay) do
@@ -1081,12 +1039,11 @@ end)
 AutoReadyButton.MouseButton1Click:Connect(function()
     AutoReady = not AutoReady
     SetToggle(AutoReadyButton, "Auto Ready", AutoReady)
-    if AutoReady then StartAutoReadyNow() end
 end)
 
 StartLoopButton.MouseButton1Click:Connect(function()
     AutoStartLoop = not AutoStartLoop
-    UpdateStartLoopUI(AutoStartLoop)
+    if UpdateStartLoopUI then UpdateStartLoopUI(AutoStartLoop) end
 end)
 
 BuyTransformButton.MouseButton1Click:Connect(function()
@@ -1197,7 +1154,7 @@ local function AddPositionUI(posData)
     delBtn.Text = "Delete"
     delBtn.TextColor3 = Color3.new(1, 1, 1)
     delBtn.TextSize = 10
-    delBtn.Font = Enum.Font.GothamBold
+    delBtn.Font.GothamBold = Enum.Font.GothamBold
     delBtn.Parent = item
     Instance.new("UICorner", delBtn).CornerRadius = UDim.new(0, 5)
 
