@@ -1,6 +1,6 @@
 
 --========================================================
--- BLACKHAT HUB | SMART AUTO - OPTIMIZED & FIXED AVATAR
+-- BLACKHAT HUB | SMART AUTO - DIRECT PLAYERGUI FIX
 -- Author: blackhat
 --========================================================
 
@@ -8,7 +8,6 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
-local CoreGui = game:GetService("CoreGui")
 
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
@@ -663,13 +662,10 @@ task.spawn(function()
 end)
 
 --========================================================
--- USER INTERFACE (BLACKHAT HUB)
+-- USER INTERFACE (BLACKHAT HUB - PLAYERGUI FIX)
 --========================================================
 
-local TargetGui = CoreGui
-pcall(function() if gethui then TargetGui = gethui() end end)
-
-local old = TargetGui:FindFirstChild("BLACKHAT_HUB")
+local old = PlayerGui:FindFirstChild("BLACKHAT_HUB")
 if old then old:Destroy() end
 
 local ScreenGui = Instance.new("ScreenGui")
@@ -677,7 +673,7 @@ ScreenGui.Name = "BLACKHAT_HUB"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.IgnoreGuiInset = true
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-ScreenGui.Parent = TargetGui
+ScreenGui.Parent = PlayerGui
 
 local Window = Instance.new("Frame")
 Window.Name = "Window"
@@ -1154,7 +1150,7 @@ local function AddPositionUI(posData)
     delBtn.Text = "Delete"
     delBtn.TextColor3 = Color3.new(1, 1, 1)
     delBtn.TextSize = 10
-    delBtn.Font.GothamBold = Enum.Font.GothamBold
+    delBtn.Font = Enum.Font.GothamBold
     delBtn.Parent = item
     Instance.new("UICorner", delBtn).CornerRadius = UDim.new(0, 5)
 
